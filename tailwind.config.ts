@@ -47,6 +47,15 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        
+        // News Portal Custom Colors
+        "news-dark": "hsl(var(--news-dark))",
+        "news-dark-foreground": "hsl(var(--news-dark-foreground))",
+        "news-accent": "hsl(var(--news-accent))",
+        "news-accent-light": "hsl(var(--news-accent-light))",
+        "news-highlight": "hsl(var(--news-highlight))",
+        "news-meta": "hsl(var(--news-meta))",
+        "news-overlay": "hsl(var(--news-overlay))",
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",
