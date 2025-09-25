@@ -7,28 +7,30 @@ const Header = () => {
       <div className="container flex h-16 items-center justify-between px-4">
         {/* Logo */}
         <div className="flex items-center space-x-2">
-          <div className="bg-news-dark text-news-dark-foreground px-3 py-1 text-sm font-bold">
-            News
-          </div>
-          <span className="text-lg font-semibold">Portal</span>
+          <a href="/" className="flex items-center space-x-2 hover:opacity-80 transition-opacity">
+            <div className="bg-news-dark text-news-dark-foreground px-3 py-1 text-sm font-bold">
+              Sport
+            </div>
+            <span className="text-lg font-semibold">News</span>
+          </a>
         </div>
 
         {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center space-x-6">
-          <a href="#" className="text-sm font-medium hover:text-news-accent transition-colors">
+          <a href="/" className="text-sm font-medium hover:text-news-accent transition-colors">
             Home
           </a>
-          <a href="#" className="text-sm font-medium hover:text-news-accent transition-colors">
-            Politics
+          <a href="/admin" className="text-sm font-medium hover:text-news-accent transition-colors">
+            Admin
           </a>
           <a href="#" className="text-sm font-medium hover:text-news-accent transition-colors">
             Sports
           </a>
           <a href="#" className="text-sm font-medium hover:text-news-accent transition-colors">
-            Technology
+            Latest
           </a>
           <a href="#" className="text-sm font-medium hover:text-news-accent transition-colors">
-            Business
+            Categories
           </a>
         </nav>
 
