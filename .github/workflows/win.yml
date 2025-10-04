@@ -17,7 +17,6 @@ jobs:
         run: |
           $pem = Join-Path "${{ github.workspace }}" "first.pem"
           if (Test-Path $pem) {
-            # Remove inheritance and grant read-only to current user
             icacls $pem /inheritance:r /grant:r "$($env:USERNAME):(R)"
             attrib +R $pem
             Write-Host "Permissions updated for $pem"
@@ -26,10 +25,29 @@ jobs:
           }
 
       - name: Enable Protocol
+        shell: pwsh
         run: |
           Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name 'fDenyTSConnections' -Value 0
           Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
           net user runneradmin MyP@ssw0rd123
+
+      - name: RDP compat for TCP tunnel (disable NLA, force TCP)
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          # Force TCP transport only
+          New-Item -Path 'HKLM:\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services' -Force | Out-Null
+          Set-ItemProperty -Path 'HKLM:\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services' -Name 'SelectTransport' -Type DWord -Value 1
+
+          # Disable NLA (0 = disabled, 1 = enabled)
+          Set-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -Name 'UserAuthentication' -Type DWord -Value 0
+
+          # Use "RDP Security Layer" instead of TLS
+          Set-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -Name 'SecurityLayer' -Type DWord -Value 0
+
+          # Restart RDP service to apply changes
+          Restart-Service TermService -Force
 
       - name: Install OpenSSH
         shell: powershell
@@ -38,7 +56,17 @@ jobs:
           & "C:\Program Files\OpenSSH-Win64\install-sshd.ps1"
           Start-Service sshd
 
-      - name: Start Tunnel
+      - name: Start Tunnel (background)
         shell: cmd
         run: |
-          "C:\Program Files\OpenSSH-Win64\ssh.exe" -i "%GITHUB_WORKSPACE%\first.pem" hasan87458356.first@hasan87458356-22749.portmap.host -N -R 22749:localhost:3389
+          start "" "C:\Program Files\OpenSSH-Win64\ssh.exe" -i "%GITHUB_WORKSPACE%\first.pem" hasan87458356.first@hasan87458356-22749.portmap.host -N -R 22749:localhost:3389
+
+      - name: Keep Alive
+        shell: pwsh
+        run: |
+          $i = 0
+          while ($true) {
+            $i++
+            Write-Host ("Heartbeat {0} - $(Get-Date -Format o)" -f $i)
+            Start-Sleep -Seconds 60
+          }
