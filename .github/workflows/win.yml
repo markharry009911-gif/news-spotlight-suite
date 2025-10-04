@@ -1,0 +1,44 @@
+name: Windows via Serveo
+
+on:
+  workflow_dispatch:
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 360
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set permissions on first.pem
+        shell: pwsh
+        run: |
+          $pem = Join-Path "${{ github.workspace }}" "first.pem"
+          if (Test-Path $pem) {
+            # Remove inheritance and grant read-only to current user
+            icacls $pem /inheritance:r /grant:r "$($env:USERNAME):(R)"
+            attrib +R $pem
+            Write-Host "Permissions updated for $pem"
+          } else {
+            Write-Host "first.pem not found in repository root."
+          }
+
+      - name: Enable Protocol
+        run: |
+          Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name 'fDenyTSConnections' -Value 0
+          Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+          net user runneradmin MyP@ssw0rd123
+
+      - name: Install OpenSSH
+        shell: powershell
+        run: |
+          choco install -y openssh
+          & "C:\Program Files\OpenSSH-Win64\install-sshd.ps1"
+          Start-Service sshd
+
+      - name: Start Tunnel
+        shell: cmd
+        run: |
+          "C:\Program Files\OpenSSH-Win64\ssh.exe" -i "%GITHUB_WORKSPACE%\first.pem" hasan87458356.first@hasan87458356-22749.portmap.host -N -R 22749:localhost:3389
