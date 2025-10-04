@@ -1,4 +1,4 @@
-name: Windows via Serveo
+name: Windows via OpenVPN
 
 on:
   workflow_dispatch:
@@ -12,61 +12,40 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set permissions on first.pem
+      - name: Set permissions on first.ovpn
         shell: pwsh
         run: |
-          $pem = Join-Path "${{ github.workspace }}" "first.pem"
-          if (Test-Path $pem) {
-            icacls $pem /inheritance:r /grant:r "$($env:USERNAME):(R)"
-            attrib +R $pem
-            Write-Host "Permissions updated for $pem"
+          $ovpn = Join-Path "${{ github.workspace }}" "first.ovpn"
+          if (Test-Path $ovpn) {
+            icacls $ovpn /inheritance:r /grant:r "$($env:USERNAME):(R)"
+            Write-Host "Permissions updated for $ovpn"
           } else {
-            Write-Host "first.pem not found in repository root."
+            Write-Host "first.ovpn not found in repository root."
           }
 
-      - name: Enable Protocol
+      - name: Enable Protocol (RDP)
         shell: pwsh
         run: |
           Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name 'fDenyTSConnections' -Value 0
           Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
           net user runneradmin MyP@ssw0rd123
 
-      - name: RDP compat for TCP tunnel (disable NLA, force TCP)
+      - name: RDP compat for TCP
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-
-          # Force TCP transport only
           New-Item -Path 'HKLM:\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services' -Force | Out-Null
           Set-ItemProperty -Path 'HKLM:\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services' -Name 'SelectTransport' -Type DWord -Value 1
-
-          # Disable NLA (0 = disabled, 1 = enabled)
           Set-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -Name 'UserAuthentication' -Type DWord -Value 0
-
-          # Use "RDP Security Layer" instead of TLS
           Set-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -Name 'SecurityLayer' -Type DWord -Value 0
-
-          # Restart RDP service to apply changes
           Restart-Service TermService -Force
 
-      - name: Install OpenSSH
-        shell: powershell
-        run: |
-          choco install -y openssh
-          & "C:\Program Files\OpenSSH-Win64\install-sshd.ps1"
-          Start-Service sshd
-
-      - name: Start Tunnel (background)
-        shell: cmd
-        run: |
-          start "" "C:\Program Files\OpenSSH-Win64\ssh.exe" -i "%GITHUB_WORKSPACE%\first.pem" hasan87458356.first@hasan87458356-22749.portmap.host -N -R 22749:localhost:3389
-
-      - name: Keep Alive
+      - name: Install OpenVPN
         shell: pwsh
         run: |
-          $i = 0
-          while ($true) {
-            $i++
-            Write-Host ("Heartbeat {0} - $(Get-Date -Format o)" -f $i)
-            Start-Sleep -Seconds 60
-          }
+          choco install -y openvpn
+
+      - name: Start OpenVPN connection (foreground)
+        shell: cmd
+        run: |
+          "C:\Program Files\OpenVPN\bin\openvpn.exe" --config "%GITHUB_WORKSPACE%\first.ovpn" --auth-nocache
